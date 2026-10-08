@@ -13,6 +13,8 @@ import (
 	"notification-agent/internal/service"
 )
 
+var jobs chan string
+
 func healthHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -25,14 +27,19 @@ func sendHandler(w http.ResponseWriter, r *http.Request) {
 
 	log.Println("[INFO] SEND API HIT")
 
-	// Trigger notification flow
-	service.ReceiveMessage("Hello Monika")
+	message := r.URL.Query().Get("message")
+
+	if message == "" {
+		message = "Hello Monika"
+	}
+
+	jobs <- message
 
 	w.Header().Set("Content-Type", "application/json")
 
 	json.NewEncoder(w).Encode(map[string]string{
 		"status":  "SUCCESS",
-		"message": "Notification processed",
+		"message": message,
 	})
 }
 
@@ -48,6 +55,11 @@ func main() {
 
 	// Create tables
 	repository.CreateTables()
+
+	// Start Worker Pool
+	jobs = service.StartWorkerPool()
+
+	log.Println("[INFO] Worker Pool Started")
 
 	// Start gRPC Server
 	go grpcserver.StartGRPCServer()

@@ -1,37 +1,54 @@
 package service
 
 import (
-	"errors"
+	"fmt"
 	"log"
-	"time"
-)
+	"os"
 
-const MaxRetries = 3
+	"github.com/sendgrid/sendgrid-go"
+	"github.com/sendgrid/sendgrid-go/helpers/mail"
+)
 
 func SendEmail(message string) error {
 
-	var err error
+	from := mail.NewEmail(
+		"Monika",
+		"monika.a.b@capgemini.com",
+	)
 
-	for i := 1; i <= MaxRetries; i++ {
+	to := mail.NewEmail(
+		"Monika",
+		"temp1@yopmail.com",
+	)
 
-		log.Printf("[INFO] Sending email... Attempt %d", i)
+	subject := "Notification Alert"
 
-		if message == "" {
-			err = errors.New("message is empty")
-		} else {
-			log.Printf("[INFO] Email sent successfully: %s", message)
-			return nil
-		}
+	msg := mail.NewSingleEmail(
+		from,
+		subject,
+		to,
+		message,
+		message,
+	)
 
-		log.Printf("[ERROR] Attempt %d failed: %v", i, err)
+	client := sendgrid.NewSendClient(
+		os.Getenv("SENDGRID_API_KEY"),
+	)
 
-		if i < MaxRetries {
-			log.Println("[INFO] Retrying in 2 seconds...")
-			time.Sleep(2 * time.Second)
-		}
+	response, err := client.Send(msg)
+	if err != nil {
+		log.Printf("[ERROR] Email failed: %v", err)
+		return err
 	}
 
-	log.Printf("[ERROR] Email failed after %d attempts", MaxRetries)
+	log.Printf("Status Code: %d", response.StatusCode)
+	log.Printf("Response Body: %s", response.Body)
 
-	return err
+	if response.StatusCode >= 400 {
+		log.Printf("[ERROR] SendGrid rejected the request")
+		return fmt.Errorf("sendgrid error: %s", response.Body)
+	}
+
+	log.Printf("[SUCCESS] Email sent successfully")
+	return nil
 }
