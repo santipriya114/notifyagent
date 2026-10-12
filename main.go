@@ -13,7 +13,7 @@ import (
 	"notification-agent/internal/service"
 )
 
-var jobs chan string
+var jobs chan service.Message
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -33,7 +33,10 @@ func sendHandler(w http.ResponseWriter, r *http.Request) {
 		message = "Hello Monika"
 	}
 
-	jobs <- message
+	jobs <- service.Message{
+	Content: message,
+	Retries: 0,
+}
 
 	w.Header().Set("Content-Type", "application/json")
 

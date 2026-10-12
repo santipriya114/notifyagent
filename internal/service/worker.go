@@ -2,13 +2,17 @@ package service
 
 import "log"
 
-func Worker(id int, jobs <-chan string) {
+func Worker(
+	id int,
+	jobs chan Message,
+	dlq chan Message,
+) {
 	for msg := range jobs {
 
-		log.Printf("[WORKER %d] Processing: %s", id, msg)
+		log.Printf("[WORKER %d] Processing: %s", id, msg.Content)
 
 		// Send SMS
-		err := SendSMS("+917483935838", msg)
+		err := SendSMS("+917483935838", msg.Content)
 		if err != nil {
 			log.Printf("[ERROR] SMS failed: %v", err)
 		} else {
@@ -16,7 +20,7 @@ func Worker(id int, jobs <-chan string) {
 		}
 
 		// Send Email
-		err = SendEmail(msg)
+		err = SendEmail(msg.Content)
 		if err != nil {
 			log.Printf("[ERROR] Email failed: %v", err)
 		} else {
@@ -25,12 +29,19 @@ func Worker(id int, jobs <-chan string) {
 	}
 }
 
-func StartWorkerPool() chan string {
-	jobs := make(chan string, 100)
+func StartWorkerPool() chan Message {
+
+	jobs := make(chan Message, 100)
 
 	for i := 1; i <= 3; i++ {
-		go Worker(i, jobs)
+		go Worker(
+			i,
+			jobs,
+			DLQ,
+		)
 	}
+
+	go ProcessDLQ()
 
 	return jobs
 }

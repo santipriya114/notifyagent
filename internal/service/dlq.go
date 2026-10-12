@@ -1,7 +1,11 @@
 package service
 
-import "fmt"
+import "log"
 
-func SendToDLQ(message string) {
-	fmt.Println("DLQ MESSAGE:", message)
+var DLQ = make(chan Message, 100)
+
+func ProcessDLQ() {
+	for msg := range DLQ {
+		log.Printf("[DLQ] Failed Message: %s", msg.Content)
+	}
 }
