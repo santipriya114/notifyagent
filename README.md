@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Notification Agent
 
 Notification Agent is a Go-based microservice that processes notifications through Azure Service Bus and sends notifications through SMS and Email channels.
@@ -214,3 +215,6 @@ az container show \
   --resource-group rg-notification-agent-poc \
   --name notification-agent \
   --query "{State:instanceView.state,IP:ipAddress.ip}"
+=======
+# notifyagent
+>>>>>>> 4ea5eedb69ddd99f0fa450f6f0bef3250851bbe9
