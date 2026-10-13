@@ -1,25 +1,44 @@
 package service
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/sendgrid/sendgrid-go"
 	"github.com/sendgrid/sendgrid-go/helpers/mail"
 )
 
+func validateSendGridConfig() error {
+	if strings.TrimSpace(os.Getenv("SENDGRID_API_KEY")) == "" {
+		return errors.New("SENDGRID_API_KEY is not configured")
+	}
+	if strings.TrimSpace(os.Getenv("FROM_EMAIL")) == "" {
+		return errors.New("FROM_EMAIL is not configured; verify the sender identity in SendGrid")
+	}
+	if strings.TrimSpace(os.Getenv("TO_EMAIL")) == "" {
+		return errors.New("TO_EMAIL is not configured")
+	}
+	return nil
+}
+
 func SendEmail(message string) error {
+	if err := validateSendGridConfig(); err != nil {
+		return err
+	}
 
-	from := mail.NewEmail(
-		"Monika",
-		"monika.a.b@capgemini.com",
-	)
+	fromName := strings.TrimSpace(os.Getenv("FROM_NAME"))
+	if fromName == "" {
+		fromName = "Notification Agent"
+	}
 
-	to := mail.NewEmail(
-		"Monika",
-		"temp1@yopmail.com",
-	)
+	fromEmail := strings.TrimSpace(os.Getenv("FROM_EMAIL"))
+	toEmail := strings.TrimSpace(os.Getenv("TO_EMAIL"))
+
+	from := mail.NewEmail(fromName, fromEmail)
+	to := mail.NewEmail("Recipient", toEmail)
 
 	subject := "Notification Alert"
 
@@ -45,8 +64,12 @@ func SendEmail(message string) error {
 	log.Printf("Response Body: %s", response.Body)
 
 	if response.StatusCode >= 400 {
+		body := strings.TrimSpace(response.Body)
+		if strings.Contains(body, "verified Sender Identity") || strings.Contains(body, "from address") {
+			return fmt.Errorf("SendGrid rejected the request: %s. Verify %s as a Sender Identity in SendGrid before sending email", body, fromEmail)
+		}
 		log.Printf("[ERROR] SendGrid rejected the request")
-		return fmt.Errorf("sendgrid error: %s", response.Body)
+		return fmt.Errorf("sendgrid error: %s", body)
 	}
 
 	log.Printf("[SUCCESS] Email sent successfully")

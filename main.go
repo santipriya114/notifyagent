@@ -9,7 +9,6 @@ import (
 
 	grpcserver "notification-agent/internal/grpc"
 	"notification-agent/internal/handler"
-	"notification-agent/internal/repository"
 	"notification-agent/internal/service"
 )
 
@@ -24,19 +23,18 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func sendHandler(w http.ResponseWriter, r *http.Request) {
-
 	log.Println("[INFO] SEND API HIT")
 
 	message := r.URL.Query().Get("message")
 
 	if message == "" {
-		message = "Hello Monika"
+		message = "Hello shantipriya"
 	}
 
 	jobs <- service.Message{
-	Content: message,
-	Retries: 0,
-}
+		Content: message,
+		Retries: 0,
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 
@@ -53,11 +51,9 @@ func main() {
 		log.Fatal("Error loading .env file")
 	}
 
-	// Connect PostgreSQL
-	repository.ConnectDB()
-
-	// Create tables
-	repository.CreateTables()
+	// PostgreSQL temporarily disabled
+	// repository.ConnectDB()
+	// repository.CreateTables()
 
 	// Start Worker Pool
 	jobs = service.StartWorkerPool()

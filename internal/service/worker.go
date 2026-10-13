@@ -1,6 +1,10 @@
 package service
 
-import "log"
+import (
+	"log"
+	"os"
+	"strings"
+)
 
 func Worker(
 	id int,
@@ -8,19 +12,24 @@ func Worker(
 	dlq chan Message,
 ) {
 	for msg := range jobs {
-
 		log.Printf("[WORKER %d] Processing: %s", id, msg.Content)
 
-		// Send SMS
-		err := SendSMS("+917483935838", msg.Content)
-		if err != nil {
-			log.Printf("[ERROR] SMS failed: %v", err)
+		smsTo := strings.TrimSpace(os.Getenv("SMS_TO"))
+		if smsTo == "" {
+			smsTo = strings.TrimSpace(os.Getenv("TO_PHONE"))
+		}
+		if smsTo == "" {
+			log.Printf("[WARN] SMS recipient is not configured; set SMS_TO or TO_PHONE to a verified Twilio number")
 		} else {
-			log.Printf("[SUCCESS] SMS sent")
+			err := SendSMS(smsTo, msg.Content)
+			if err != nil {
+				log.Printf("[ERROR] SMS failed: %v", err)
+			} else {
+				log.Printf("[SUCCESS] SMS sent")
+			}
 		}
 
-		// Send Email
-		err = SendEmail(msg.Content)
+		err := SendEmail(msg.Content)
 		if err != nil {
 			log.Printf("[ERROR] Email failed: %v", err)
 		} else {
@@ -30,7 +39,6 @@ func Worker(
 }
 
 func StartWorkerPool() chan Message {
-
 	jobs := make(chan Message, 100)
 
 	for i := 1; i <= 3; i++ {

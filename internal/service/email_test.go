@@ -1,12 +1,17 @@
 package service
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
-func TestSendEmailSuccess(t *testing.T) {
+func TestSendEmailRequiresConfiguredProvider(t *testing.T) {
+	t.Setenv("SENDGRID_API_KEY", "")
+	t.Setenv("FROM_EMAIL", "")
+	t.Setenv("TO_EMAIL", "")
 
 	err := SendEmail("Hello")
-
-	if err != nil {
-		t.Errorf("Expected nil, got %v", err)
+	if err == nil || !strings.Contains(err.Error(), "SENDGRID_API_KEY") {
+		t.Fatalf("expected missing SENDGRID_API_KEY error, got %v", err)
 	}
 }
