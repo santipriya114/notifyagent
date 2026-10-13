@@ -1,72 +1,100 @@
-<<<<<<< HEAD
 # Notification Agent
 
-Notification Agent is a Go-based microservice that processes notifications through Azure Service Bus and sends notifications through SMS and Email channels.
+Notification Agent is a Go-based microservice for sending SMS and email notifications through Twilio and SendGrid. It also exposes health checks and gRPC endpoints for notification workflows.
 
 ## Features
 
-- Producer API to send notifications
-- Consumer to receive notifications from Azure Service Bus
-- Azure PostgreSQL integration
-- gRPC APIs
-- SMS notifications using Twilio
-- Email notification support
-- Health Check API
-- Azure deployment support
+- Producer and consumer notification flow
+- Azure Service Bus integration
+- PostgreSQL support
+- SMS notification support using Twilio
+- Email notification support using SendGrid
+- gRPC and HTTP services
+- Health check endpoint
+- Worker-based processing for sending notifications
 
 ---
 
 ## Prerequisites
 
-- Go 1.24+
-- Azure Subscription
-- Azure Service Bus
-- Azure PostgreSQL
-- Twilio Account
+- Go 1.22+
+- Azure Service Bus connection string
+- Azure PostgreSQL database (if enabled)
+- Twilio account
+- SendGrid account
 - Git
 
 ---
 
 ## Project Structure
 
-```
+```text
 notification-agent/
 ├── cmd/
+│   ├── grpcclient/
+│   └── grpcserver/
 ├── internal/
-├── proto/
+│   ├── config/
+│   ├── dto/
+│   ├── grpc/
+│   ├── handler/
+│   ├── middleware/
+│   ├── models/
+│   ├── repository/
+│   └── service/
 ├── migrations/
+├── proto/
+├── .env.example
+├── .gitignore
+├── dockerfile
+├── go.mod
 ├── main.go
 ├── producer.go
-├── consumer.go
-├── go.mod
-├── Dockerfile
-└── README.md
+├── README.md
+└── client_temp.go.txt
 ```
 
 ---
 
 ## Environment Variables
 
-Create a `.env` file:
+Create a local `.env` file from the template:
+
+```bash
+copy .env.example .env
+```
+
+Example:
 
 ```env
 PORT=8085
+API_TOKEN=test111git
+GRPC_TOKEN=your_grpc_token
 
-DB_HOST=<postgres-host>
+DB_HOST=your_db_host
 DB_PORT=5432
-DB_USER=<db-user>
-DB_PASSWORD=<db-password>
+DB_USER=your_db_user
+DB_PASSWORD=your_db_password
 DB_NAME=notificationdb
 
-SERVICE_BUS_CONNECTION_STRING=<service-bus-connection-string>
-QUEUE_NAME=notifications
+SERVICEBUS_CONNECTION=Endpoint=sb://your-service-bus;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=your_key
+QUEUE_NAME=notification-events
 
-TWILIO_ACCOUNT_SID=<twilio-sid>
-TWILIO_AUTH_TOKEN=<twilio-token>
-TWILIO_PHONE_NUMBER=<twilio-number>
+SENDGRID_API_KEY=your_sendgrid_api_key
+TWILIO_ACCOUNT_SID=your_twilio_account_sid
+TWILIO_AUTH_TOKEN=your_twilio_auth_token
+TWILIO_PHONE_NUMBER=+17372212163
+SMS_TO=+919691129372
+SMS_FROM=+17372212163
 
-GRPC_PORT=50051
+FROM_EMAIL=your_verified_sender@example.com
+TO_EMAIL=recipient@example.com
 ```
+
+Important:
+- `.env` should not be committed
+- Twilio trial accounts require the destination number to be verified
+- SendGrid `FROM_EMAIL` must match a verified sender identity
 
 ---
 
@@ -75,8 +103,8 @@ GRPC_PORT=50051
 Clone repository:
 
 ```bash
-git clone https://github.com/monikaab-ops/notification-agent.git
-cd notification-agent
+git clone https://github.com/santipriya114/notifyagent.git
+cd notifyagent
 ```
 
 Install dependencies:
@@ -89,46 +117,16 @@ go mod tidy
 
 ## Run Application
 
-Start application:
-
 ```bash
 go run .
 ```
 
-Expected output:
+Expected startup logs:
 
 ```text
-Connected to Azure PostgreSQL
-HTTP Server started on :8085
+[INFO] Worker Pool Started
+[INFO] HTTP Server started on :8085
 gRPC Server started on :50051
-```
-
----
-
-## Producer API
-
-Send notification:
-
-```bash
-curl -X POST http://localhost:8085/send
-```
-
-Expected:
-
-```text
-Message Sent
-```
-
----
-
-## Consumer
-
-Consumer receives messages from Azure Service Bus.
-
-Example log:
-
-```text
-[CONSUMER] Message Received: Hello Monika
 ```
 
 ---
@@ -142,16 +140,36 @@ curl http://localhost:8085/health
 Response:
 
 ```json
-{
-  "status": "healthy"
-}
+{"status":"UP"}
+```
+
+---
+
+## Producer API
+
+Send a notification request:
+
+```bash
+curl -X POST "http://localhost:8085/send?message=Hello%20santi"
+```
+
+---
+
+## Consumer
+
+The consumer reads messages from Azure Service Bus and routes them through the notification worker.
+
+Example log output:
+
+```text
+[WORKER 1] Processing: Hello santi
 ```
 
 ---
 
 ## Database Migration
 
-Run migrations:
+If migrations are needed:
 
 ```bash
 go run migrations/migrate.go
@@ -178,7 +196,7 @@ docker build -t notification-agent:v1 .
 ## GitHub Repository
 
 ```text
-https://github.com/monikaab-ops/notification-agent
+https://github.com/santipriya114/notifyagent.git
 ```
 
 ---
@@ -203,10 +221,10 @@ https://github.com/monikaab-ops/notification-agent
   - notification-agent
 
 - Azure PostgreSQL
-  - psqlmonika
+  - notifyagentpgserverdev
 
 - Azure Service Bus
-  - sbmonika
+  - notifyagentsbdev
 
 ### Verify Deployment
 
@@ -215,6 +233,25 @@ az container show \
   --resource-group rg-notification-agent-poc \
   --name notification-agent \
   --query "{State:instanceView.state,IP:ipAddress.ip}"
-=======
-# notifyagent
->>>>>>> 4ea5eedb69ddd99f0fa450f6f0bef3250851bbe9
+```
+
+---
+
+## Common Issues
+
+### Twilio
+
+- Error `572002` means the destination number is not verified for a Twilio trial account.
+- Use E.164 format such as `+919691129372`.
+
+### SendGrid
+
+- `FROM_EMAIL` must be a verified sender identity in SendGrid.
+- If using a dynamic template, ensure the template ID exists in your SendGrid account.
+
+---
+
+## Notes
+
+This project was created for notification processing and is intended to be configured with real provider credentials in a local `.env` file before running in development or deployment environments.
+
